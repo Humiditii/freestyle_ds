@@ -1,4 +1,5 @@
 from ast import Dict
+from cmath import inf
 from os import stat
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -36,11 +37,16 @@ class DataProcessing():
             self.df[col] = le.fit_transform(self.df[col])
         print('Encoding done')
 
+    def onehot_encode(self, features):
+        self.df = pd.get_dummies(self.df, prefix_sep='_', columns=features)
+        print('OneHot done')
+
     def scaler(self, columns):
         sc = StandardScaler()
         for col in columns:
             self.df[col] = sc.fit_transform(np.array(self.df[col])).reshape(-1,1)
-
+        print('Done scaling')
+                 
     def stat(self,column):
 
         stat_dict = {}
@@ -59,24 +65,30 @@ class DataProcessing():
 
         return stat_dict
 
+    def split_data(self, train_thres=0.5):
+        if train_thres >= 0.5 and train_thres <= 1.0:
+            train_length = round(len(self.df) * train_thres)
+            test_length = len(self.df) - train_length
+        
+
 dp = DataProcessing(data)
 
 dp.info()
 #checking for null values
-#dp.heat_map()
+dp.heat_map()
 
 print(dp.df.columns.to_list(), '\n')
 
-#dp.print_uniques('type') # categorical encoding
+dp.print_uniques('type') # categorical encoding
 
-#dp.print_uniques('step')
+dp.print_uniques('step')
 
-#dp.corr()
+dp.corr()
 
-#print(dp.df['nameOrig'].value_counts()) # label encoding
+print(dp.df['nameOrig'].value_counts()) # label encoding
 
 
-#print(dp.df['nameDest'].value_counts()) # label encoding
+print(dp.df['nameDest'].value_counts()) # label encoding
 
 for col in dp.df.columns:
     if dp.df[col].dtypes == np.int64 or dp.df[col].dtypes == np.float64:
@@ -84,7 +96,18 @@ for col in dp.df.columns:
 
 dp.df['step'] = 60*dp.df['step']
 
-dp.df['sender_to_receiver'] = (dp.df['oldbalanceOrg'] - dp.df['newbalanceOrig'] ) / ( dp.df['newbalanceDest'] - dp.df['oldbalanceDest'] ) * dp.df['isFraud']
+dp.df['sender_to_receiver'] = np.abs(dp.df['oldbalanceOrg'] - dp.df['newbalanceOrig'] ) / ( dp.df['newbalanceDest'] - dp.df['oldbalanceDest'] ) * dp.df['isFraud']
 
 dp.df['step_amt_relation'] = (dp.df['step']/dp.df['step'].max()) * dp.df['amount']
 
+le_encode_list = ['nameDest', 'nameOrig']
+
+dp.encoder(le_encode_list)
+
+dp.onehot_encode(['type'])
+
+dp.df['sender_to_receiver'] = dp.df['sender_to_receiver'].fillna(0)
+
+print(dp.df.head())
+
+print(dp.df['sender_to_receiver'].info())
